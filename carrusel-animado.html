@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Niidea · Carrusel</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{background:#DBACC2;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .escena{width:min(90vw,76vh,620px);display:flex;flex-direction:column;align-items:center;gap:2%;}
+
+  /* carrusel: aparece al final, cuando el logo ya está armado */
+  .carrusel{width:72%;opacity:0;animation:aparecer 1s ease-out 2.1s forwards;}
+  @media (max-aspect-ratio:3/4){.carrusel{width:86%;}}   /* celular parado: sobra alto, el carrusel puede ser más grande */
+  .carrusel canvas{width:100%;height:auto;display:block;}
+  @keyframes aparecer{from{opacity:0;transform:translateY(6%) scale(.94);}to{opacity:1;transform:none;}}
+
+  /* logo armado con piezas sueltas */
+  .logo{position:relative;width:100%;aspect-ratio:1273/796;}
+  .logo img{position:absolute;display:block;opacity:0;animation-fill-mode:forwards;}
+  .caer{animation:caer .5s cubic-bezier(.3,1.5,.5,1) forwards;}
+  .latido{animation:latido .45s cubic-bezier(.3,1.8,.5,1) forwards;}
+  .deslizar{animation:deslizar .5s cubic-bezier(.2,1.2,.4,1) forwards;}
+  .subir{animation:subir .35s ease-out forwards;}
+  .escribir{animation:escribir .7s ease-in-out forwards;}
+  .estrella{animation:estrella .7s cubic-bezier(.3,1.5,.5,1) forwards, titilar 2s ease-in-out infinite;}
+  @keyframes caer{from{opacity:0;transform:translateY(-35%) scale(.7);}to{opacity:1;transform:none;}}
+  @keyframes latido{from{opacity:0;transform:scale(0);}to{opacity:1;transform:none;}}
+  @keyframes deslizar{from{opacity:0;transform:translateX(60%);}to{opacity:1;transform:none;}}
+  @keyframes subir{from{opacity:0;transform:translateY(40%);}to{opacity:1;transform:none;}}
+  @keyframes escribir{from{opacity:1;clip-path:inset(0 100% 0 0);}to{opacity:1;clip-path:inset(0 0 0 0);}}
+  @keyframes estrella{from{opacity:0;transform:scale(0) rotate(-180deg);}to{opacity:1;transform:none;}}
+  @keyframes titilar{0%,100%{transform:scale(1) rotate(0);}50%{transform:scale(.8) rotate(20deg);}}
+
+  .quieto .carrusel,.quieto .logo img{animation:none!important;opacity:1;}
+  @media (prefers-reduced-motion:reduce){.carrusel,.logo img{animation:none!important;opacity:1;}}
+</style>
+</head>
+<body>
+  <div class="escena">
+    <div class="carrusel"><canvas id="cv" width="1190" height="1105"></canvas></div>
+    <div class="logo" id="logo"></div>
+  </div>
+  <script>
+  const fijo = new URLSearchParams(location.search).get('t');   // ?t=ms congela ese instante (y muestra todo)
+  if (fijo !== null) document.body.classList.add('quieto');
+
+  // ---------- logo: primero "ni" + "idea!", después todo el resto ----------
+  const LOGO = {W: 1273, H: 796, piezas: [
+    // [archivo, x, y, ancho, animación, demora en s]
+    ['ni-0.png',       185,  51, 334, 'caer', 0.20],
+    ['ni-1.png',       524, 114, 141, 'caer', 0.29],
+    ['idea-0.png',     177, 447, 154, 'caer', 0.49],
+    ['idea-1.png',     325, 346, 286, 'caer', 0.57],
+    ['idea-2.png',     599, 434, 241, 'caer', 0.64],
+    ['idea-3.png',     856, 432, 257, 'caer', 0.72],
+    ['idea-4.png',    1135, 352, 107, 'caer', 0.80],
+    ['corazon-1.png',  530,   7, 121, 'latido', 1.23],
+    ['corazon-0.png',  205, 352, 105, 'latido', 1.33],
+    ['u-0.png',          8, 196, 159, 'deslizar', 1.40],
+    ['verso-0.png',    648, 206, 154, 'subir', 1.46],
+    ['verso-1.png',    785, 202, 128, 'subir', 1.51],
+    ['verso-2.png',    905, 200, 117, 'subir', 1.57],
+    ['verso-3.png',   1016, 199, 110, 'subir', 1.62],
+    ['verso-4.png',   1126, 197, 140, 'subir', 1.67],
+    ['creativo-0.png', 640, 349, 450, 'escribir', 1.69],
+    ['estrella-0.png', 554, 670, 120, 'estrella', 1.89],
+  ]};
+  const logo = document.getElementById('logo');
+  for (const [f, x, y, w, anim, d] of LOGO.piezas) {
+    const img = new Image();
+    img.src = 'logo-capas/' + f; img.alt = '';
+    img.className = anim;
+    Object.assign(img.style, {left: x / LOGO.W * 100 + '%', top: y / LOGO.H * 100 + '%', width: w / LOGO.W * 100 + '%'});
+    img.style.animationDelay = anim === 'estrella' ? `${d}s, ${d + 0.7}s` : d + 's';
+    logo.appendChild(img);
+  }
+  logo.setAttribute('role', 'img'); logo.setAttribute('aria-label', 'uNIverso creativo idea!');
+
+  // ---------- carrusel ----------
+  // Capas recortadas de carrusel.png: columna y base quedan fijas; techo, caballos y borde giran; las estrellas titilan.
+  const DIR = 'carrusel-capas/';
+  const VUELTA = 10000;          // ms por vuelta completa
+  const ARRANQUE = 2100;         // ms: cuando aparece el carrusel empieza a girar, despacio al principio
+  const N = 5;                   // cantidad de caballos
+  const SUBE = 26;               // cuánto suben y bajan por el poste (px)
+  const RED = [212, 1, 3];
+  const FONDO = [219, 172, 194], FONDO_CSS = '#DBACC2';   // color de fondo (los rellenos usan el mismo)
+  const OX = -108, OY = -4;
+  // las capas están recortadas a lo que tienen dibujado: esquina de cada una en el dibujo original
+  const OFF = {base: [188, 592], columna: [576, 592], techo: [250, 3], tronco: [597, 569], estrellas: [117, 123], corazones: [322, 429]};      // recorte del lienzo: el dibujo original tiene margen vacío
+
+  // elipse de la cara superior de la plataforma (medida sobre el dibujo)
+  const P = {cx: 699.2, cy: 970.7, rx: 485.0, ry: 37.8};
+  const K = 0.71;                // radio de la ronda de caballos, relativo a la plataforma
+  const PIE = 985;               // y del pie del poste en el dibujo original
+  const HORSES = {
+    a: {src: 'c-caballo-a.png', pole: 217.5, top: 599},
+    b: {src: 'c-caballo-b.png', pole: 249.5, top: 599},
+  };
+  // cajas [x0, y0, x1, y1] de cada estrella dentro de c-estrellas.png
+  const ESTRELLAS = [[484,121,556,207],[955,161,1037,258],[396,188,419,211],[307,211,384,303],[442,224,485,270],
+    [892,224,935,270],[391,270,437,319],[1036,270,1065,298],[1091,309,1118,334],[115,477,182,554],[1222,478,1289,553],
+    [1091,602,1119,630],[268,622,339,701],[545,652,567,669],[832,652,852,669],[1107,671,1146,713],[195,691,235,734],
+    [1211,782,1267,843],[168,787,196,816],[1220,922,1246,947],[1094,933,1111,949],[285,934,302,949],[468,941,499,974],
+    [885,942,917,974],[514,957,550,994],[847,963,880,997]];
+
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  // el lienzo se dibuja al tamaño en que se ve (en celular, mucho menos que 1190 px): menos trabajo por cuadro
+  const ANCHO = 1190, ALTO = 1105;
+  let escala = 1;
+  function ajustar() {
+    const k = Math.min(1, cv.clientWidth * Math.min(devicePixelRatio || 1, 2) / ANCHO) || 1;
+    if (Math.abs(k - escala) < 0.01 && cv.width === Math.round(ANCHO * k)) return;
+    escala = k; cv.width = Math.round(ANCHO * k); cv.height = Math.round(ALTO * k);
+  }
+  const load = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = DIR + src; });
+
+  // versión del caballo en el color de fondo, para desvanecer los que pasan por atrás
+  function shade(img) {
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    x.globalCompositeOperation = 'source-atop'; x.fillStyle = FONDO_CSS; x.fillRect(0, 0, c.width, c.height);
+    return c;
+  }
+
+  const depth = z => 0.8 + 0.2 * (1 + z) / 2;          // escala por profundidad (z=1 adelante)
+  const S0 = depth(Math.cos(-57.8 * Math.PI / 180));    // escala del caballo en el dibujo original
+
+  // rojo que se va fundiendo con el fondo (dark=0 rojo pleno, dark=1 color de fondo)
+  function rgb(dark) { return `rgb(${RED.map((v, i) => Math.round(v * (1 - dark) + FONDO[i] * dark)).join(',')})`; }
+
+  function drawPole(x, footY, s, dark, twist) {
+    const w = 34 * s, st = 11 * s, top = 566;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x - w / 2, top, w, footY - top); ctx.clip();
+    ctx.fillStyle = FONDO_CSS; ctx.fillRect(x - w / 2, top, w, footY - top);
+    // rayas en diagonal que avanzan: el poste parece girar
+    ctx.strokeStyle = rgb(dark); ctx.lineWidth = 6 * s;
+    const step = 22 * s, off = ((twist * step) % step + step) % step;
+    for (let y = top - step + off; y < footY + w; y += step) {
+      ctx.beginPath(); ctx.moveTo(x - w / 2, y + w * .6); ctx.lineTo(x + w / 2, y); ctx.stroke();
+    }
+    ctx.fillStyle = rgb(dark);
+    ctx.fillRect(x - w / 2, top, st, footY - top);
+    ctx.fillRect(x + w / 2 - st, top, st, footY - top);
+    ctx.restore();
+    // pie del poste
+    const fw = 60 * s, fh = 26 * s;
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, footY - fh);
+    ctx.quadraticCurveTo(x - w / 2, footY - fh * .35, x - fw / 2, footY - fh * .2);
+    ctx.lineTo(x - fw / 2, footY); ctx.lineTo(x + fw / 2, footY); ctx.lineTo(x + fw / 2, footY - fh * .2);
+    ctx.quadraticCurveTo(x + w / 2, footY - fh * .35, x + w / 2, footY - fh);
+    ctx.closePath();
+    ctx.fillStyle = FONDO_CSS; ctx.fill();
+    ctx.lineWidth = 9 * s; ctx.strokeStyle = rgb(dark); ctx.lineJoin = 'round'; ctx.stroke();
+  }
+
+  function drawHorse(h, theta, twist) {
+    const z = Math.cos(theta);
+    const s = depth(z) / S0;
+    const x = P.cx + K * P.rx * Math.sin(theta);
+    const footY = P.cy + K * P.ry * z;
+    // desvanecido por profundidad: adelante rojo pleno; recién al pasar el costado se va al fondo
+    const fz = Math.min(1, Math.max(0, (0.3 - z) / 1.2));
+    const dark = 0.82 * fz * fz * (3 - 2 * fz);
+    // sube y baja, cada caballo a su ritmo
+    const lift = SUBE * s * (1 + Math.sin(theta * 3 + h.phase)) / 2;
+    // mira hacia donde avanza. Al pasar por los costados no se aplana hasta desaparecer:
+    // conserva un ancho mínimo y se funde rápido de mirar a un lado a mirar al otro
+    const ancho = 0.3 + 0.7 * Math.abs(z);
+    const u = Math.min(1, Math.max(0, (z + 0.18) / 0.36));
+    const derecha = u * u * (3 - 2 * u);
+    const lados = [[1, derecha], [-1, 1 - derecha]].filter(([, p]) => p > 0.01);
+    const dx = -h.pole, dy = -(PIE - h.top);
+    const pintar = (dir, fn) => {
+      ctx.save(); ctx.translate(x, footY - lift); ctx.scale(dir * ancho * s, s); fn(); ctx.restore();
+    };
+    // primero la silueta negra de ambos, para que el caballo no se vuelva transparente durante el fundido
+    if (lados.length > 1) lados.forEach(([dir]) => pintar(dir, () => ctx.drawImage(h.dark, dx, dy)));
+    lados.forEach(([dir, p]) => pintar(dir, () => {
+      ctx.globalAlpha = p; ctx.drawImage(h.img, dx, dy);
+      if (dark > 0.01) { ctx.globalAlpha = p * dark; ctx.drawImage(h.dark, dx, dy); }
+    }));
+
+    drawPole(x, footY, s, dark, twist);
+  }
+
+  function drawStars(img, t) {
+    ESTRELLAS.forEach(([x0, y0, x1, y1], i) => {
+      const w = x1 - x0, h = y1 - y0;
+      const tw = 0.5 + 0.5 * Math.sin(t / (700 + (i * 137) % 600) + i * 2.4);   // cada una a su ritmo
+      const s = 0.7 + 0.4 * tw;
+      ctx.globalAlpha = 0.35 + 0.65 * tw;
+      ctx.drawImage(img, x0 - OFF.estrellas[0], y0 - OFF.estrellas[1], w, h, (x0 + x1) / 2 - w * s / 2, (y0 + y1) / 2 - h * s / 2, w * s, h * s);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // borde de la plataforma: puntitos y estrellas que giran junto con los caballos
+  const BORDE = {cx: 699.2, cy: 1006, rx: 500, ry: 46};
+  const ADORNOS = Array.from({length: 30}, (_, i) => ['punto', 'estrella', 'punto', 'estrella', 'punto', 'grande'][i % 6]);
+  function sparkle(x, y, rx, ry) {
+    ctx.beginPath();
+    const kx = rx * 0.22, ky = ry * 0.22;                  // curvas un poco abiertas: estrella más gordita
+    ctx.moveTo(x, y - ry);
+    ctx.quadraticCurveTo(x + kx, y - ky, x + rx, y); ctx.quadraticCurveTo(x + kx, y + ky, x, y + ry);
+    ctx.quadraticCurveTo(x - kx, y + ky, x - rx, y); ctx.quadraticCurveTo(x - kx, y - ky, x, y - ry);
+    ctx.fill();
+  }
+  function drawBorde(rot) {
+    ctx.fillStyle = rgb(0);
+    ADORNOS.forEach((tipo, i) => {
+      const phi = rot + i * 2 * Math.PI / ADORNOS.length;
+      const c = Math.cos(phi);
+      if (c < 0.05) return;                                  // sólo la mitad de adelante
+      const x = BORDE.cx + BORDE.rx * Math.sin(phi), y = BORDE.cy + BORDE.ry * c;
+      ctx.globalAlpha = Math.min(1, (c - 0.05) / 0.2);       // se desvanecen al doblar por los costados
+      if (tipo === 'punto') { ctx.beginPath(); ctx.ellipse(x, y, 7 * c, 7, 0, 0, 2 * Math.PI); ctx.fill(); }
+      else { const r = tipo === 'grande' ? 17 : 12; sparkle(x, y, r * c, r * 1.25); }
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // bandera que flamea: se dibuja en tiras verticales, más ondulada lejos del mástil
+  const BANDERA = {x: 664, y: 15};
+  function drawBandera(img, t) {
+    for (let sx = 0; sx < img.width; sx += 3) {
+      const k = sx / img.width;
+      const dy = 9 * k * Math.sin(t / 260 - sx / 32);
+      ctx.drawImage(img, sx, 0, 4, img.height, BANDERA.x + sx, BANDERA.y + dy, 4, img.height);
+    }
+  }
+
+  // techo que gira: la banda de corazones es un módulo (un separador y un corazón) que se repite
+  // alrededor de un cilindro; los gajos del techo se dibujan de nuevo y giran a la par
+  const TECHO = {cx: 692.5, r: 511, x0: 182, x1: 1203, top: 338, alto: 222, modulo: 391, n: 8};
+  const ALFA = 2 * Math.PI / TECHO.n;              // ángulo que ocupa cada módulo
+  const GAJOS = {n: 16, pico: [651, 168], alero: 402, r: 470};   // el pico queda escondido dentro de la punta
+  // forma del techo (fila por fila) y su prolongación hasta los costados de la banda: recorta los gajos
+  const TECHO_IZQ = [[625,204],[621,210],[615,216],[610,222],[605,228],[599,234],[592,240],[586,246],[579,252],[572,258],[564,264],[557,270],[549,276],[541,282],[532,288],[524,294],[515,300],[505,306],[495,312],[486,318],[475,324],[464,330]];
+  const TECHO_DER = [[680,204],[685,210],[691,216],[697,222],[703,228],[710,234],[717,240],[724,246],[730,252],[737,258],[743,264],[750,270],[772,276],[782,282],[791,288],[801,294],[811,300],[821,306],[831,312],[842,318],[854,324],[866,330]];
+  const COLAS = [[[447.5, 332], [404, 355], [192, 376]], [[882.5, 332], [933, 355], [1196, 376]]];
+  const CORAZON = [677, 427, 739, 502];            // el corazón del módulo (en c-corazones.png)
+  const U_CORAZON = (708 - 452) / TECHO.modulo;   // dónde cae el corazón dentro del módulo
+  const U_SEPARADOR = (497.5 - 452) / TECHO.modulo;
+
+  function drawGajos(rot) {
+    ctx.save();
+    ctx.beginPath();
+    TECHO_IZQ.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+    const [[l0, l1], [lc0, lc1], [l20, l21]] = COLAS[0], [[r0, r1], [rc0, rc1], [r20, r21]] = COLAS[1];
+    ctx.lineTo(l0, l1 + 10); ctx.quadraticCurveTo(lc0, lc1 + 10, l20, l21 + 10);
+    ctx.lineTo(TECHO.x0, GAJOS.alero + 4); ctx.lineTo(TECHO.x1, GAJOS.alero + 4);
+    ctx.lineTo(r20, r21 + 10); ctx.quadraticCurveTo(rc0, rc1 + 10, r0, r1 + 10);
+    [...TECHO_DER].reverse().forEach(([x, y]) => ctx.lineTo(x, y));
+    ctx.closePath();
+    ctx.clip();
+    ctx.strokeStyle = rgb(0); ctx.lineCap = 'round';
+    const [px, py] = GAJOS.pico;
+    for (let j = 0; j < GAJOS.n; j++) {
+      const psi = rot + (j + 0.5) * 2 * Math.PI / GAJOS.n;
+      const c = Math.cos(psi);
+      if (c <= 0) continue;
+      const xe = TECHO.cx + GAJOS.r * Math.sin(psi);
+      ctx.globalAlpha = Math.min(1, c / 0.25);
+      ctx.lineWidth = 7 + 4 * c;
+      ctx.beginPath(); ctx.moveTo(px, py);
+      ctx.quadraticCurveTo(px + (xe - px) * 0.25, 350, xe, GAJOS.alero);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  const FESTON = {n: 104, y: 569, rx: 8.5, ry: 7};   // 13 festones por módulo
+
+  // proyecta la banda columna por columna: cerca de los costados el módulo se comprime
+  function drawBanda(tira, rot) {
+    const {cx, r, x0, x1, top, alto, modulo} = TECHO;
+    for (let x = x0; x < x1; x += 2) {
+      const s = (x + 1 - cx) / r;
+      const phi = Math.asin(s), c = Math.cos(phi);
+      const u = ((((phi - rot) / ALFA + 0.5) % 1) + 1) % 1 * modulo;
+      const w = Math.min(modulo, 2 * modulo / (ALFA * r * c));
+      ctx.drawImage(tira, u, 0, w, alto, x, top, 2.4, alto);
+      // sombra hacia los costados: se nota la curva del cilindro
+      const sombra = 0.75 * (1 - c) ** 1.5;
+      if (sombra > 0.02) { ctx.fillStyle = `rgba(${FONDO.join(',')},${sombra})`; ctx.fillRect(x, top, 2.4, alto); }
+      // línea de abajo de la banda
+      ctx.fillStyle = rgb(sombra); ctx.fillRect(x, FESTON.y - 10, 2.4, 10);
+    }
+    // festones que cuelgan de la línea: giran con la banda
+    for (let i = 0; i < FESTON.n; i++) {
+      const phi = rot + i * 2 * Math.PI / FESTON.n, c = Math.cos(phi);
+      const x = cx + r * Math.sin(phi);
+      if (c < 0.03 || x < x0 + 4 || x > x1 - 4) continue;
+      ctx.fillStyle = rgb(0.75 * (1 - c) ** 1.5);
+      ctx.beginPath(); ctx.ellipse(x, FESTON.y, FESTON.rx * c, FESTON.ry, 0, 0, Math.PI); ctx.fill();
+    }
+  }
+
+  function drawCorazones(img, t, rot) {
+    const [x0, y0, x1, y1] = CORAZON, w = x1 - x0, h = y1 - y0, cy = (y0 + y1) / 2;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(TECHO.x0, TECHO.top, TECHO.x1 - TECHO.x0, TECHO.alto); ctx.clip();
+    for (let k = 0; k < TECHO.n; k++) {
+      const phi = rot + (k + U_CORAZON - 0.5) * ALFA;
+      const c = Math.cos(phi);
+      const x = TECHO.cx + TECHO.r * Math.sin(phi);
+      if (c <= 0.01) continue;                              // aparece apenas entra por el costado
+      ctx.globalAlpha = 1 - 0.75 * (1 - c) ** 1.5;          // mismo desvanecido que la banda
+      const f = ((t / 1400 - k * 0.18) % 1 + 1) % 1;       // latido doble, como un corazón
+      const beat = Math.exp(-((f - 0.08) ** 2) / 0.002) + 0.6 * Math.exp(-((f - 0.24) ** 2) / 0.002);
+      const s = 1 + 0.16 * beat;
+      ctx.drawImage(img, x0 - OFF.corazones[0], y0 - OFF.corazones[1], w, h, x - w * s * c / 2, cy - h * s / 2, w * s * c, h * s);
+    }
+    ctx.restore();
+  }
+
+  // lucecitas: las de los separadores giran con la banda; la de la punta y la de abajo quedan fijas
+  const LUCES_FIJAS = [[646,147,8],[705.5,571,0]];
+  function drawLuces(t, rot) {
+    const luces = LUCES_FIJAS.map(([x, y, hueco]) => [x, y, hueco, 1]);
+    for (let k = 0; k < TECHO.n; k++) {
+      const phi = rot + (k + U_SEPARADOR - 0.5) * ALFA, c = Math.cos(phi);
+      const x = TECHO.cx + TECHO.r * Math.sin(phi);
+      if (c < 0.15 || x < TECHO.x0 + 8 || x > TECHO.x1 - 8) continue;
+      luces.push([x, 397, 7, c], [x + 6 * c, 526, 0, c]);
+    }
+    luces.sort((a, b) => a[0] - b[0]);
+    ctx.save();
+    luces.forEach(([x, y, hueco, c]) => {
+      const f = ((t / 1800 - (x - 180) / 1100) % 1 + 1) % 1;    // la cadena recorre de izquierda a derecha
+      const on = Math.max(0, 1 - Math.abs(f - 0.5) * 4) ** 1.5;
+      const I = 0.25 + 0.75 * on;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 30);
+      g.addColorStop(0, `rgba(230,20,20,${0.45 * I})`); g.addColorStop(1, 'rgba(255,0,0,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 30, 0, 2 * Math.PI); ctx.fill();
+      if (hueco) { ctx.fillStyle = `rgba(255,240,230,${0.95 * on})`; ctx.beginPath(); ctx.ellipse(x, y, hueco * c, hueco, 0, 0, 2 * Math.PI); ctx.fill(); }
+    });
+    ctx.restore();
+  }
+
+  Promise.all([load('c-base.png'), load('c-columna.png'), load('c-techo-fijo.png'), load('c-estrellas.png'),
+               load(HORSES.a.src), load(HORSES.b.src), load('c-bandera.png'), load('c-corazones.png'),
+               load('c-techo-banda.png'), load('c-tronco.png')])
+    .then(([base, col, techo, stars, ha, hb, bandera, corazones, modulo, tronco]) => {
+    // el módulo repetido dos veces, para poder leer una columna que cruza el borde
+    const tira = document.createElement('canvas');
+    tira.width = modulo.width * 2; tira.height = modulo.height;
+    tira.getContext('2d').drawImage(modulo, 0, 0); tira.getContext('2d').drawImage(modulo, modulo.width, 0);
+    const kinds = [
+      {...HORSES.a, img: ha, dark: shade(ha)},
+      {...HORSES.b, img: hb, dark: shade(hb)},
+    ];
+    const horses = Array.from({length: N}, (_, i) => ({...kinds[i % 2], phase: i * 1.7, offset: i * 2 * Math.PI / N}));
+    const still = fijo !== null || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const t0 = performance.now();
+    let vuelta = 0, prev = 0;    // ángulo acumulado: permite arrancar despacio
+
+    function frame(now) {
+      const t = fijo !== null ? +fijo : still ? 0 : now - t0;
+      const ramp = fijo !== null ? 1 : Math.min(1, Math.max(0, (t - ARRANQUE) / 1800));
+      vuelta += (t - prev) / VUELTA * 2 * Math.PI * ramp * ramp;
+      prev = t;
+      const rot = -57.8 * Math.PI / 180 + (fijo !== null ? t / VUELTA * 2 * Math.PI : vuelta);
+
+      ajustar();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.setTransform(escala, 0, 0, escala, OX * escala, OY * escala);
+      ctx.drawImage(base, ...OFF.base);
+      // contorno de la plataforma (en el dibujo quedaba tapado por los caballos)
+      ctx.beginPath(); ctx.ellipse(P.cx, P.cy, P.rx, P.ry, 0, 0, 2 * Math.PI);
+      ctx.strokeStyle = rgb(0); ctx.lineWidth = 10.5; ctx.stroke();
+      drawBorde(rot);
+      drawStars(stars, t);
+
+      const twist = rot * 8;
+      const list = horses.map(h => ({h, th: rot + h.offset})).sort((a, b) => Math.cos(a.th) - Math.cos(b.th));
+      list.filter(o => Math.cos(o.th) < 0).forEach(o => drawHorse(o.h, o.th, twist));
+      ctx.drawImage(col, ...OFF.columna);
+      list.filter(o => Math.cos(o.th) >= 0).forEach(o => drawHorse(o.h, o.th, twist));
+      ctx.drawImage(techo, ...OFF.techo);
+      drawGajos(rot);
+      drawBanda(tira, rot);
+      ctx.drawImage(tronco, ...OFF.tronco);          // continuación de la columna dentro del techo: fija
+      drawCorazones(corazones, t, rot);
+      drawLuces(t, rot);
+      drawBandera(bandera, t);
+      if (!still) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  });
+  </script>
+</body>
+</html>
