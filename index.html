@@ -3,12 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Niidea · Carrusel</title>
+<title>Niidea · Universo creativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,700,100&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{height:100%;}
-  body{background:#DBACC2;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-  .escena{width:min(90vw,76vh,620px);display:flex;flex-direction:column;align-items:center;gap:2%;}
+  html,body{min-height:100%;}
+  body{background:#DBACC2;min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    overflow-x:hidden;padding:24px 16px;}
+  .escena{width:min(100%,54vh,540px);display:flex;flex-direction:column;align-items:center;gap:2%;}
+
+  /* categorías: tarjetas con la estética de la tienda (rojo #cd0301, rosas #f9b8e2 / #f8e2f0,
+     líneas onduladas y corazones como en sus banners); aparecen al final de la intro */
+  .categorias{--rojo:#cd0301;--rosa:#f9b8e2;--rosa-claro:#f8e2f0;
+    width:100%;display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6%;}
+  @media (min-width:760px){.categorias{width:min(92vw,880px);grid-template-columns:repeat(4,1fr);gap:16px;margin-top:4%;}}
+  .card{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:10px;aspect-ratio:4/3;padding:16px 12px;border-radius:16px;background:var(--rojo);text-align:center;text-decoration:none;
+    box-shadow:0 6px 18px rgba(205,3,1,.18);opacity:0;animation:subir .5s ease-out forwards;
+    transition:transform .25s cubic-bezier(.3,1.4,.5,1),box-shadow .25s;}
+  /* cuadrícula ondulada, como en el banner principal de la tienda */
+  .card::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.14;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23fff' stroke-width='2.2'%3E%3Cpath d='M-5 22 C25 12 45 34 70 24 S110 10 125 20'/%3E%3Cpath d='M-5 58 C30 48 50 70 78 58 S112 46 125 56'/%3E%3Cpath d='M-5 92 C28 84 52 102 80 92 S112 82 125 90'/%3E%3Cpath d='M28 -5 C18 25 40 45 30 70 S20 95 30 105'/%3E%3Cpath d='M78 -5 C88 22 66 48 80 72 S92 96 82 105'/%3E%3C/g%3E%3C/svg%3E") center/100% 100%;}
+  .card .corazon{position:absolute;z-index:-1;fill:var(--rosa);opacity:.9;transition:transform .35s cubic-bezier(.3,1.6,.5,1);}
+  .card .c1{width:27%;right:-7%;bottom:-9%;transform:rotate(18deg);}
+  .card .c2{width:16%;left:7%;top:8%;transform:rotate(-16deg);opacity:.75;}
+  .card:nth-child(2) .c1{right:auto;left:-9%;transform:rotate(-20deg);} .card:nth-child(2) .c2{left:auto;right:8%;}
+  .card:nth-child(3) .c1{bottom:auto;top:-12%;transform:rotate(200deg);} .card:nth-child(3) .c2{top:auto;bottom:9%;}
+  .card:nth-child(4) .c1{right:auto;left:-10%;bottom:auto;top:-12%;transform:rotate(160deg);} .card:nth-child(4) .c2{left:auto;right:9%;top:auto;bottom:10%;}
+  .card .titulo{font-family:'Fraunces',Georgia,serif;font-weight:700;font-variation-settings:'SOFT' 100;color:var(--rosa);
+    font-size:clamp(18px,4.6vw,23px);line-height:1.05;letter-spacing:-.01em;text-wrap:balance;}
+  @media (min-width:760px){.card{aspect-ratio:3/2;} .card .titulo{font-size:clamp(18px,2vw,23px);}}
+  .card .ver{font-family:'Outfit',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--rosa-claro);display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1.5px solid rgba(248,226,240,.6);border-radius:999px;
+    transition:background-color .2s,color .2s;}
+  .card:hover,.card:focus-visible{transform:translateY(-4px) rotate(-1deg);box-shadow:0 12px 26px rgba(205,3,1,.28);}
+  .card:hover .c1,.card:focus-visible .c1{transform:scale(1.15) rotate(8deg);}
+  .card:hover .ver,.card:focus-visible .ver{background:var(--rosa-claro);color:var(--rojo);}
+  .card:focus-visible{outline:3px solid var(--rosa-claro);outline-offset:3px;}
+  .card:active{transform:scale(.97);}
 
   /* carrusel: aparece al final, cuando el logo ya está armado */
   .carrusel{width:72%;opacity:0;animation:aparecer 1s ease-out 2.1s forwards;}
@@ -33,14 +67,36 @@
   @keyframes estrella{from{opacity:0;transform:scale(0) rotate(-180deg);}to{opacity:1;transform:none;}}
   @keyframes titilar{0%,100%{transform:scale(1) rotate(0);}50%{transform:scale(.8) rotate(20deg);}}
 
-  .quieto .carrusel,.quieto .logo img{animation:none!important;opacity:1;}
-  @media (prefers-reduced-motion:reduce){.carrusel,.logo img{animation:none!important;opacity:1;}}
+  .quieto .carrusel,.quieto .logo img,.quieto .categorias .card{animation:none!important;opacity:1;}
+  @media (prefers-reduced-motion:reduce){.carrusel,.logo img,.categorias .card{animation:none!important;opacity:1;}}
 </style>
 </head>
 <body>
   <div class="escena">
     <div class="carrusel"><canvas id="cv" width="1190" height="1105"></canvas></div>
     <div class="logo" id="logo"></div>
+    <nav class="categorias" aria-label="Categorías">
+      <a class="card" href="https://tienda.niideauniversocreativo.com/tesoros-personalizados" style="animation-delay:2.7s">
+        <svg class="corazon c1" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg><svg class="corazon c2" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg>
+        <span class="titulo">Tesoros personalizados</span>
+        <span class="ver">Ver más <span aria-hidden="true">→</span></span>
+      </a>
+      <a class="card" href="https://tienda.niideauniversocreativo.com/summer-creativo" style="animation-delay:2.8s">
+        <svg class="corazon c1" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg><svg class="corazon c2" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg>
+        <span class="titulo">Summer creativo</span>
+        <span class="ver">Ver más <span aria-hidden="true">→</span></span>
+      </a>
+      <a class="card" href="https://tienda.niideauniversocreativo.com/mascotas" style="animation-delay:2.9s">
+        <svg class="corazon c1" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg><svg class="corazon c2" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg>
+        <span class="titulo">Para peluditos</span>
+        <span class="ver">Ver más <span aria-hidden="true">→</span></span>
+      </a>
+      <a class="card" href="https://tienda.niideauniversocreativo.com/objetos-para-tu-mundo" style="animation-delay:3s">
+        <svg class="corazon c1" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg><svg class="corazon c2" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg>
+        <span class="titulo">Objetos para tu mundo</span>
+        <span class="ver">Ver más <span aria-hidden="true">→</span></span>
+      </a>
+    </nav>
   </div>
   <script>
   const fijo = new URLSearchParams(location.search).get('t');   // ?t=ms congela ese instante (y muestra todo)
