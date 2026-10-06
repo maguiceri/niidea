@@ -31,39 +31,34 @@
   .escena{width:min(100%,46vh,500px);display:flex;flex-direction:column;align-items:center;gap:2%;}
 
   /* categorías: tarjetas con los colores de la marca (rojo #CD0301, rosa #F9B8E2,
-     líneas onduladas y corazones como en sus banners); aparecen al final de la intro */
+     líneas onduladas como en sus banners) y un dibujo por categoría; aparecen al final de la intro */
   .categorias{--rojo:#CD0301;--rosa:#F9B8E2;
     width:100%;display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6%;}
   @media (min-width:760px){.categorias{width:min(92vw,880px);grid-template-columns:repeat(4,1fr);gap:16px;margin-top:4%;}}
   .card{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:10px;aspect-ratio:4/3;padding:16px 12px;border-radius:16px;background:var(--rojo);text-align:center;text-decoration:none;
+    gap:8px;aspect-ratio:1/1.02;padding:14px 10px;border-radius:16px;background:var(--rojo);text-align:center;text-decoration:none;
     box-shadow:0 6px 18px rgba(205,3,1,.18);opacity:0;animation:subir .5s ease-out forwards;
     transition:transform .25s cubic-bezier(.3,1.4,.5,1),box-shadow .25s;}
   /* cuadrícula ondulada, como en el banner principal de la tienda */
   .card::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.14;
     background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23fff' stroke-width='2.2'%3E%3Cpath d='M-5 22 C25 12 45 34 70 24 S110 10 125 20'/%3E%3Cpath d='M-5 58 C30 48 50 70 78 58 S112 46 125 56'/%3E%3Cpath d='M-5 92 C28 84 52 102 80 92 S112 82 125 90'/%3E%3Cpath d='M28 -5 C18 25 40 45 30 70 S20 95 30 105'/%3E%3Cpath d='M78 -5 C88 22 66 48 80 72 S92 96 82 105'/%3E%3C/g%3E%3C/svg%3E") center/100% 100%;}
-  .card .corazon{position:absolute;z-index:-1;fill:var(--rosa);opacity:.9;transition:transform .35s cubic-bezier(.3,1.6,.5,1);}
-  .card .c2{width:16%;left:7%;top:8%;transform:rotate(-16deg);opacity:.75;}
-  .card:nth-child(2) .c2{left:auto;right:8%;}
-  .card:nth-child(3) .c2{top:auto;bottom:9%;}
-  .card:nth-child(4) .c2{left:auto;right:9%;top:auto;bottom:10%;}
+  /* dibujo de cada categoría: es lo que diferencia una tarjeta de otra */
+  .card .icono{width:42%;height:auto;aspect-ratio:1;object-fit:contain;transition:transform .35s cubic-bezier(.3,1.6,.5,1);}
   .card .titulo{font-family:'Fraunces',Georgia,serif;font-weight:700;font-variation-settings:'SOFT' 100;color:var(--rosa);
-    font-size:clamp(18px,4.6vw,23px);line-height:1.05;letter-spacing:-.01em;text-wrap:balance;}
-  @media (min-width:760px){.card{aspect-ratio:3/2;} .card .titulo{font-size:clamp(18px,2vw,23px);}}
-  .card .ver{font-family:'Outfit',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--rosa);display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1.5px solid rgba(249,184,226,.7);border-radius:999px;
+    font-size:clamp(16px,4.4vw,21px);line-height:1.05;letter-spacing:-.01em;text-wrap:balance;
+    /* reserva siempre dos renglones: así el dibujo y el botón quedan a la misma altura en las cuatro tarjetas */
+    min-height:2.1em;display:flex;align-items:center;justify-content:center;}
+  @media (min-width:760px){.card .titulo{font-size:clamp(17px,1.9vw,21px);}}
+  /* texto chico casi blanco sobre el rojo: contraste 5,7 a 1 (el rosa de la marca daba 3,6) */
+  .card .ver{font-family:'Outfit',system-ui,sans-serif;font-weight:600;font-size:13px;line-height:1.2;white-space:nowrap;
+    color:#FFF3FA;display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border:1.5px solid rgba(255,243,250,.8);border-radius:999px;
     transition:background-color .2s,color .2s;}
-  .card .ver{white-space:nowrap;}
-  /* celular: tarjetas angostas, el texto del botón va más chico y sin flecha para que entre en un renglón */
-  @media (max-width:759px){
-    .card .ver{font-size:10.5px;letter-spacing:.07em;padding:5px 10px;}
-    .card .ver span{display:none;}
-    .card .c2{width:12%;top:5%;left:5%;}
-    .card:nth-child(2) .c2{right:5%;} .card:nth-child(3) .c2{bottom:5%;} .card:nth-child(4) .c2{right:5%;bottom:5%;}
-  }
+  .card .ver span{transition:transform .2s;}
+  @media (max-width:759px){.card .ver{font-size:12.5px;padding:4px 9px;}}
   .card:hover,.card:focus-visible{transform:translateY(-4px) rotate(-1deg);box-shadow:0 12px 26px rgba(205,3,1,.28);}
-  .card:hover .c2,.card:focus-visible .c2{transform:scale(1.25) rotate(6deg);}
-  .card:hover .ver,.card:focus-visible .ver{background:var(--rosa);color:var(--rojo);}
+  .card:hover .icono,.card:focus-visible .icono{transform:scale(1.1) rotate(-5deg);}
+  .card:hover .ver,.card:focus-visible .ver{background:#FFF3FA;color:var(--rojo);}
+  .card:hover .ver span,.card:focus-visible .ver span{transform:translateX(3px);}
   .card:focus-visible{outline:3px solid var(--rojo);outline-offset:3px;}
   .card:active{transform:scale(.97);}
 
@@ -114,22 +109,22 @@
     <div class="logo" id="logo"></div>
     <nav class="categorias" aria-label="Categorías">
       <a class="card" href="https://tienda.niideauniversocreativo.com/tesoros-personalizados" style="animation-delay:2.7s">
-        <svg class="corazon c2" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg>
+        <img class="icono" src="iconos/tesoros.png" alt="" width="320" height="320">
         <span class="titulo">Tesoros personalizados</span>
         <span class="ver">Joyitas y más <span aria-hidden="true">→</span></span>
       </a>
       <a class="card" href="https://tienda.niideauniversocreativo.com/summer-creativo" style="animation-delay:2.8s">
-        <svg class="corazon c2" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg>
+        <img class="icono" src="iconos/summer.png" alt="" width="320" height="320">
         <span class="titulo">Summer creativo</span>
         <span class="ver">Accesorios y más <span aria-hidden="true">→</span></span>
       </a>
       <a class="card" href="https://tienda.niideauniversocreativo.com/mascotas" style="animation-delay:2.9s">
-        <svg class="corazon c2" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg>
+        <img class="icono" src="iconos/peluditos.png" alt="" width="320" height="320">
         <span class="titulo">Para peluditos</span>
         <span class="ver">Chapitas y más <span aria-hidden="true">→</span></span>
       </a>
       <a class="card" href="https://tienda.niideauniversocreativo.com/objetos-para-tu-mundo" style="animation-delay:3s">
-        <svg class="corazon c2" viewBox="0 0 32 29" aria-hidden="true"><path d="M16 29 3.2 16.4A8.6 8.6 0 0 1 16 4.9 8.6 8.6 0 0 1 28.8 16.4Z"/></svg>
+        <img class="icono" src="iconos/objetos.png" alt="" width="320" height="320">
         <span class="titulo">Objetos para tu mundo</span>
         <span class="ver">Ver más <span aria-hidden="true">→</span></span>
       </a>
